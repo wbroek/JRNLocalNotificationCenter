@@ -11,6 +11,8 @@
 NSString *const JRNLocalNotificationHandlingKeyName = @"JRN_KEY";
 NSString *const JRNApplicationDidReceiveLocalNotification = @"JRNApplicationDidReceiveLocalNotification";
 
+#define SYSTEM_VERSION_LESS_THAN(v) ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedAscending)
+
 @interface JRNLocalNotificationCenter()
 @property (nonatomic) NSMutableDictionary *localPushDictionary;
 @property (nonatomic) BOOL checkRemoteNotificationAvailability;
@@ -31,6 +33,12 @@ static JRNLocalNotificationCenter *defaultCenter;
         defaultCenter.localNotificationHandler = nil;
     });
     return defaultCenter;
+}
+
+- (void)registerUserNotificationSettings {
+    if ([UIApplication instancesRespondToSelector:@selector(registerUserNotificationSettings:)]){
+        [[UIApplication sharedApplication]registerUserNotificationSettings:[UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeAlert|UIUserNotificationTypeBadge|UIUserNotificationTypeSound categories:nil]];
+    }
 }
 
 - (void)loadScheduledLocalPushNotificationsFromApplication
@@ -266,7 +274,13 @@ static JRNLocalNotificationCenter *defaultCenter;
         return nil;
     }
     
-    UIRemoteNotificationType notificationType = [[UIApplication sharedApplication] enabledRemoteNotificationTypes];
+    NSUInteger notificationType;
+    if (!SYSTEM_VERSION_LESS_THAN(@"8.0")) {
+        notificationType = [[[UIApplication sharedApplication] currentUserNotificationSettings] types];
+    }else{
+        notificationType = [[UIApplication sharedApplication] enabledRemoteNotificationTypes];
+    }
+
     if (self.checkRemoteNotificationAvailability && notificationType == UIRemoteNotificationTypeNone) {
         return nil;
     }
